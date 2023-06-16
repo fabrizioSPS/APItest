@@ -1,52 +1,44 @@
 import json
 import time
 from datetime import datetime, timedelta
-from typing import Annotated, Union, List, Any
+from typing import Annotated, List
+from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, Request, Path, Form, UploadFile, File, Depends, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Request, Path, UploadFile, File
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import database
 from InternalCode.json_parser import parse_Json
-from database import SessionLocal
-from pydanticApiModels import Item, UserInDB, TokenData, User, Token, UserInfo
-from . import pydanticApiModels as schemas
+from pydanticApiModels import Item, User, Token, TokenData
+
+# to get a string like this run:
+# openssl rand -hex 32
+SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
 
 """
 Authentication
 """
-SECRET_KEY = "66d5528fbd7adc9cb5446d6a37e2c5fce851beeb78e0cbd3017b9f8b00434dc3"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@app.on_event("startup")
+async def start_db():
+    async with database.engine.begin() as conn:
+        await conn.run_sync(database.Base.metadata.create_all)
 
 
 def verify_password(plain_password, hashed_password):
@@ -57,14 +49,13 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+async def get_user(db: AsyncSession, username: str) -> database.User:
+    result = await db.execute(select(database.User).filter_by(username=username))
+    return result.scalars().first()
 
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+async def authenticate_user(db: AsyncSession, username: str, password: str) -> database.User:
+    user = await get_user(db, username)
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -72,7 +63,7 @@ def authenticate_user(fake_db, username: str, password: str):
     return user
 
 
-def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -83,7 +74,8 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(db: AsyncSession = Depends(database.get_db),
+                           token: str = Depends(oauth2_scheme)) -> database.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -97,25 +89,22 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = await get_user(db, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
 
 
-async def get_current_active_user(
-        current_user: Annotated[UserInfo, Depends(get_current_user)]
-):
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> database.User:
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 
 @app.post("/token", response_model=Token)
-async def login_for_access_token(
-        form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
-):
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+async def login_for_access_token(db: AsyncSession = Depends(database.get_db),
+                                 form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -130,42 +119,8 @@ async def login_for_access_token(
 
 
 @app.get("/users/me/", response_model=User)
-async def read_users_me(
-        current_user: Annotated[User, Depends(get_current_active_user)]
-):
+async def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
-
-
-@app.post("/users/", response_model=User)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = database.get_user_by_email(db, email=user.email)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    return database.create_user(db=db, user=user)
-
-
-@app.get("/users/", response_model=list[schemas.User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    users = database.get_users(db, skip=skip, limit=limit)
-    return users
-
-
-@app.get("/users/{user_id}", response_model=schemas.User)
-def read_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = database.get_user(db, user_id=user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
-
-
-@app.post("/login/")
-async def login(username: Annotated[str, Form()], password: Annotated[str, Form()]):
-    return {"username": username}
-
-
-@app.post("/register/")
-async def register(User: Annotated[Any, Depends(User)]):
-    return User.username
 
 
 @app.get("/")
@@ -187,10 +142,6 @@ async def StartPage():
         """
     return HTMLResponse(content=content)
 
-
-"""
-Database
-"""
 
 """
 Reading and loading in JSON files.
