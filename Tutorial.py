@@ -7,7 +7,7 @@ from typing import Optional
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi import Request, Path, UploadFile, File
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -173,6 +173,9 @@ async def read_json():
         """
     return HTMLResponse(content=content)
 
+@app.get("/download_json/")
+async def main():
+    return FileResponse("example.json", media_type="json", filename ="Api.json")
 
 """
 Extra tutorial steps that might become useful
