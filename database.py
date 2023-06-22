@@ -4,8 +4,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import declarative_base
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./sqlite3.db"
-# add acount with:
-# INSERT INTO users VALUES (1, 'johndoe', 'johndoe@example.com', 'John Doe', false, '$2b$12$dQD2AD2Y.Aa8F3IliHPfk.yNESW7FZe3RmeT38K661sg/vds404ga');
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
@@ -14,6 +12,15 @@ Base = declarative_base()
 
 
 async def get_db():
+    """
+    Get a database session.
+
+    This function is a context manager. It yields a database session and ensures
+    the session is closed when exiting the context.
+
+    Yields:
+        AsyncSession: The database session.
+    """
     session = AsyncSession(engine)
     try:
         yield session
@@ -22,6 +29,17 @@ async def get_db():
 
 
 class User(Base):
+    """
+    The User model.
+
+    Attributes:
+        id: The ID of the user. This field is the primary key.
+        username: The username of the user. This field is unique.
+        email: The email of the user. This field is unique.
+        full_name: The full name of the user.
+        disabled: A boolean indicating whether the user is disabled.
+        hashed_password: The hashed password of the user.
+    """
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True, index=True)
