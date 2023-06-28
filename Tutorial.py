@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Import local database settings and models
 import database
+from InternalCode.Application.useCApp import sum_of_numbers
 
 # Import custom JSON parser
 from InternalCode.json_parser import parse_Json
@@ -272,15 +273,9 @@ async def StartPage():
     """
     content = """
     <body>
-    <form action="/login/" enctype="multipart/form-data" method="post">
-    <input name="username" type="string">
-    <input name="password" type="string">
-    <input type="submit">
-    </form>
-    <form action="/register/" enctype="multipart/form-data" method="post">
-    <input name="username" type="string">
-    <input name="age" type="string">
-    <input name="password" type="string">
+    <form action="/sum/" enctype="multipart/form-data" method="post">
+    <input name="a" type="string">
+    <input name="b" type="string">
     <input type="submit">
     </form>
     </body>
@@ -347,6 +342,15 @@ async def main():
     """
     return FileResponse("example.json", media_type="json", filename="Api.json")
 
+@app.post("/sum/")
+async def sum(a: int, b: int):
+    """
+    Sum two numbers
+
+    Returns: sum
+
+    """
+    return sum_of_numbers(a, b)
 
 """
 Extra tutorial steps that might become useful
@@ -409,3 +413,5 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 
+if __name__ == "__main__":
+    uvicorn.run(app)
