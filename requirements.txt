@@ -1,0 +1,7 @@
+sqlalchemy~=2.0.16
+uvicorn~=0.22.0
+fastapi~=0.96.0
+passlib~=1.7.4
+slowapi~=0.1.8
+pydantic~=1.10.9
+python-jose~=3.3.0
