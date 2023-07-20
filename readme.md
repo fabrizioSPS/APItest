@@ -5,7 +5,6 @@ This guide will walk you through the steps to deploy a FastAPI application with 
 ## Prerequisites
 
 - Python 3
-- Nginx installed on the server
 
 ## Steps
 
