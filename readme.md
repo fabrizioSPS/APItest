@@ -1,37 +1,108 @@
-<> means the variable can be set at will.
-[] means it is a file name that can be set at will.
-Fastapi deployment with nginx
-1) Make a virtual env:
-	'python3 -m venv <name>'
-	'source <name>/bin/activate'
-2) Setup fastapi api, with all the files contained in a directory, in our case [app].
-3) Make a [requirements.txt] file, with all the needed packages for the api and including fastapi, uvicorn and gunicorn.
-4) If your virtual envirement is activated do: 'pip install -r [requirements.txt]'
-5) Set the logging directory in [gunicorn_conf.py]
-6) Adjust [fastapi_example.service]:
-	- Change 'Description'
-	- Change 'User'
-	- Set 'WorkingDirectory'
-	- adjust path to gunicorn, to the gunicorn_conf and the fastapi api.
-7) sudo systemctl start [fastapi_example], name is the previous file without .service.
-8) sudo systemctl enable [fastapi_example], this will automatically start the api on server restart.
-9) sudo systemctl status [fastapi_example], should return Active: active (running) with additional info.
-10) install nginx, 'sudo apt install nginx'
-11) 'sudo systemctl start nginx', start service
-12) 'sudo systemctl enable nginx', automatically start service
-13) Make domainname file, as in the [fastapi_test] file. put in 
- /etc/nginx/sites-available/' directory.
-	- Adjust <DomainName>, to the available domain name.
-14) Add softlink, 'sudo ln -s /etc/nginx/sites-available/[fastapi_test] /etc/nginx/sites-enabled/'
-15) sudo systemctl restart nginx
+# FastAPI Deployment with Nginx
 
-Now your api should be available trough the set domain, via http.
-ps. <DomainName> can be set to the local IP, get it through 'curl ifconfig.me'.
+This guide will walk you through the steps to deploy a FastAPI application with Nginx as a reverse proxy and obtain an SSL certificate for secure HTTPS access.
 
-Untested:
-We can also obtain an SSL certificate
-1) install certbot, 'sudo apt install certbot python3-certbot-nginx'.
-2) obtain an SSL certificate, 'sudo certbot --nginx -d [fastapi_test]'.
-3) Reload nginx, 'sudo sytemctl restart nginx'
+## Prerequisites
 
-Now your api should be available trough the set domain, via https.
+- Python 3
+- Nginx installed on the server
+
+## Steps
+
+1. **Create a Virtual Environment**
+
+	`python3 -m venv <name>`
+   
+	`source <name>/bin/activate`
+
+2. **Setup FastAPI Application**
+
+	Place all the FastAPI application files in a directory, let's call it [app].
+
+3. **Create Requirements File**
+
+	Create a 'requirements.txt' file with all the required packages for the FastAPI application, including 'fastapi', 'uvicorn', and 'gunicorn'.
+
+4. **Install Required Packages**
+
+	If your virtual environment is activated, install the required packages:
+   
+	`pip install -r requirements.txt`
+
+5. **Set Logging Directory in 'gunicorn_conf.py'**
+
+	Update the 'gunicorn_conf.py' file to set the desired logging directory.
+
+6. **Make Service, let's call it [fastapi_example.service]**
+
+   - Change 'Description'
+   - Change 'User'
+   - Set 'WorkingDirectory'
+   - Adjust the path to 'gunicorn', 'gunicorn_conf.py', and the FastAPI application.
+
+7. **Start and Enable the Service**
+
+	`sudo systemctl start [fastapi_example]`
+   
+	`sudo systemctl enable [fastapi_example]`
+
+	This will start the API on server restart.
+
+8. **Check Service Status**
+
+	`sudo systemctl status [fastapi_example]`
+
+	The output should show 'Active: active (running)' with additional information.
+
+9. **Install Nginx**
+
+	`sudo apt install nginx`
+
+10. **Start and Enable Nginx**
+
+	'sudo systemctl start nginx'
+	
+	'sudo systemctl enable nginx'
+
+11. **Configure Nginx**
+
+	Create a configuration file for your domain (e.g., <DomainName\>). Place it in the '/etc/nginx/sites-available/' directory.
+	
+	Replace <DomainName\> with the actual domain name you want to use.
+
+12. **Create a Symbolic Link**
+
+	Create a symbolic link to enable the Nginx configuration:
+	
+	`sudo ln -s /etc/nginx/sites-available/<DomainName> /etc/nginx/sites-enabled/`
+
+13. **Restart Nginx**
+
+	`sudo systemctl restart nginx`
+	
+	Now your API should be available through the set domain via HTTP.
+	
+	Note: If you want to access the API through a local IP, find it using 'curl ifconfig.me'.
+
+## Untested: Obtaining an SSL Certificate
+
+If you want to enable HTTPS access with an SSL certificate, follow these additional steps:
+
+1. **Install Certbot**
+
+	`sudo apt install certbot python3-certbot-nginx`
+
+2. **Obtain SSL Certificate**
+
+	Run Certbot to obtain an SSL certificate for your domain:
+   
+	`sudo certbot --nginx -d <DomainName>`
+
+3. **Reload Nginx**
+
+	`sudo systemctl restart nginx`
+   
+	Now your API should be available through the set domain via HTTPS.
+
+
+Please note that the SSL certificate part is untested, so ensure to thoroughly test your setup to ensure everything is working as expected.
