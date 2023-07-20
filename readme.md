@@ -1,3 +1,5 @@
+<> means the variable can be set at will.
+[] means it is a file name that can be set at will.
 Fastapi deployment with nginx
 1) Make a virtual env:
 	'python3 -m venv <name>'
@@ -15,8 +17,8 @@ Fastapi deployment with nginx
 8) sudo systemctl enable [fastapi_example], this will automatically start the api on server restart.
 9) sudo systemctl status [fastapi_example], should return Active: active (running) with additional info.
 10) install nginx, 'sudo apt install nginx'
-11) sudo systemctl start nginx, start service
-12) sudo systemctl enable nginx, automatically start service
+11) 'sudo systemctl start nginx', start service
+12) 'sudo systemctl enable nginx', automatically start service
 13) Make domainname file, as in the [fastapi_test] file. put in 
  /etc/nginx/sites-available/' directory.
 	- Adjust <DomainName>, to the available domain name.
