@@ -1,0 +1,22 @@
+# Allows automatic start up of api on server restart.
+[Unit]
+Description=<Title>
+
+After=network.target
+
+
+[Service]
+# Adjust to actual username
+User=<User>
+
+Group=www-data
+
+# Set the working directory to the application folder
+WorkingDirectory=<PWD>
+
+# call gunicorn from the virtual env with the conf file and the application.
+ExecStart=<path_to_venv>/bin/gunicorn -c <path_to_conv=f>gunicorn_conf.py <fastapi_filename>:<fastapi_appname>
+
+
+[Install]
+WantedBy=multi-user.target
